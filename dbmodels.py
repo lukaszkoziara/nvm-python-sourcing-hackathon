@@ -21,3 +21,6 @@ class Event(Base):
         d = datetime.utcnow()
         return cls(id=str(uuid4()), aggregation_id=aggregation_id, utctime=str(d), type=type, data=data)
 
+
+
+

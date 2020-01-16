@@ -1,17 +1,19 @@
 from enum import Enum
 from json import dumps
-from typing import List
 
-from fastapi import FastAPI, Depends, Body
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
+
 from sqlalchemy.orm import Session
 
-from db import SessionLocal
+from db import Base, SessionLocal, engine
 from dbmodels import Event
 
 
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
 
 # Dependency
 def get_db():
@@ -46,14 +48,9 @@ class InPermission(BaseModel):
     value: bool
 
 
-class OutPermission(InPermission):
-    id: int
-
-
-
 @app.post('/permissions')
 async def create_permission(permission: InPermission,
-                            db: Session = Depends(get_db)):
+                            db: Session = Depends(get_db)) -> str:
 
     event = Event.create(
         aggregation_id=permission.name,
@@ -61,10 +58,4 @@ async def create_permission(permission: InPermission,
         data=dumps({'resource_type': permission.resource_type, 'value': permission.value}))
     db.add(event)
     db.commit()
-
-
-
-
-
-
-
+    return event.id
