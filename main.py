@@ -1,4 +1,4 @@
-from json import dumps
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import FastAPI, Depends
@@ -30,13 +30,15 @@ def get_db():
 
 
 @app.get("/events")
-async def get_events(aggregation_id: str = None, db: Session = Depends(get_db)):
+async def get_events(aggregation_id: str = None, at_timestamp: datetime = None, db: Session = Depends(get_db)):
     """GET list of events"""
     if aggregation_id is not None:
-        events = db.query(Event).filter(Event.aggregation_id == aggregation_id).all()
+        events = db.query(Event).filter(Event.aggregation_id == aggregation_id)
     else:
-        events = db.query(Event).all()
-    return events
+        events = db.query(Event)
+    if at_timestamp:
+        events.filter(Event.utctime <= str(datetime))
+    return events.all()
 
 
 @app.get("/events/{id}")
