@@ -95,7 +95,7 @@ class Permission:
             self.permission_name = event.permission_name
             self.permission_value = event.permission_value
         elif isinstance(event, PermissionDeleted):
-
+            pass
         else:
             raise ValueError('TODO')
 
