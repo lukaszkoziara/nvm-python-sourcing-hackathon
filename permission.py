@@ -22,8 +22,12 @@ class Event:
             self.aggregation_id = uuid.UUID(db_event.aggregation_id)
 
     @classmethod
-    def get_from_storage(self, db_conn, aggregation_id):
+    def get_from_storage(cls, db_conn, aggregation_id):
         return db_conn.query(DBEvent).filter(DBEvent.aggregation_id == str(aggregation_id)).all()
+
+    @classmethod
+    def get_aggregations(cls, db_conn):
+        return db_conn.query(DBEvent.aggregation_id).distinct().all()
 
 
 class PermissionEvent(Event):
@@ -152,3 +156,19 @@ class PermissionManager:
             return permission.get_data()
         else:
             return None
+
+    @classmethod
+    def get_permissions(cls, db_conn):
+        aggregations = Event.get_aggregations(db_conn)
+        result = []
+
+        for agg_elem in aggregations:
+            print(agg_elem[0])
+            events = Event.get_from_storage(db_conn, str(agg_elem[0]))
+            permission = Permission(events)
+            if permission.is_active:
+                result.append(permission.get_data())
+
+        return result
+
+

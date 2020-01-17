@@ -87,6 +87,11 @@ async def get_permission_event(
         return HTTP_404_NOT_FOUND
 
 
+async def get_permissions_event(
+    db: Session = Depends(get_db)
+) -> UUID:
+    return PermissionManager.get_permissions(db)
+
 
 @app.post("/permissions", status_code=HTTP_201_CREATED)
 async def create_permission(
@@ -110,9 +115,9 @@ async def delete_permission(id: UUID, db: Session = Depends(get_db)) -> UUID:
     return await delete_permission_event(id, db)
 
 
-@app.get("/permissions", status_code=HTTP_201_CREATED)
+@app.get("/permissions", status_code=HTTP_200_OK)
 async def get_permissions(db: Session = Depends(get_db)) -> str:
-    return db.query(Event).all()
+    return await get_permissions_event(db)
 
 
 @app.get("/permissions/{id}", status_code=HTTP_200_OK)
