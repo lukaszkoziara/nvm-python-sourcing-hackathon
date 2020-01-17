@@ -36,7 +36,7 @@ async def get_events(aggregation_id: str = None, db: Session = Depends(get_db)):
         events = db.query(Event).filter(Event.aggregation_id == aggregation_id).all()
     else:
         events = db.query(Event).all()
-    return events or HTTP_404_NOT_FOUND
+    return events or []
 
 
 @app.get("/events/{id}")
