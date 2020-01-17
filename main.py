@@ -36,7 +36,7 @@ async def get_events(aggregation_id: str = None, db: Session = Depends(get_db)):
         events = db.query(Event).filter(Event.aggregation_id == aggregation_id).all()
     else:
         events = db.query(Event).all()
-    return events or HTTP_404_NOT_FOUND
+    return events
 
 
 @app.get("/events/{id}")
@@ -53,22 +53,26 @@ class InPermission(BaseModel):
 
 
 async def create_permission_event(permission: InPermission, db: Session):
-    event = CommandManager.create_permission(db, permission.name, permission.resource_type, permission.value)
-    return event.aggregation_id
+    event = CommandManager.create_permission(
+        db, permission.name, permission.resource_type, permission.value
+    )
+    return {"aggregation_id": str(event.aggregation_id)}
 
 
 async def modify_permission(
     aggregation_id: UUID, permission: InPermission, event_type: EventType, db: Session
 ):
-    event = CommandManager.update_permission(db, aggregation_id, permission.name, permission.resource_type, permission.value)
-    return event.aggregation_id
+    event = CommandManager.update_permission(
+        db, aggregation_id, permission.name, permission.resource_type, permission.value
+    )
+    return {"aggregation_id": str(event.aggregation_id)}
 
 
 async def delete_permission_event(
     aggregation_id: UUID, db: Session = Depends(get_db)
-) -> UUID:
+) -> dict:
     event = CommandManager.delete_permission(db, aggregation_id)
-    return event.aggregation_id
+    return {"aggregation_id": str(event.aggregation_id)}
 
 
 async def get_permission_event(
@@ -85,7 +89,7 @@ async def get_permission_event(
 @app.post("/permissions", status_code=HTTP_201_CREATED)
 async def create_permission(
     permission: InPermission, db: Session = Depends(get_db)
-) -> UUID:
+) -> dict:
 
     return await create_permission_event(permission, db)
 
@@ -99,9 +103,7 @@ async def update_permission(
 
 
 @app.delete("/permissions/{id}", status_code=HTTP_200_OK)
-async def delete_permission(
-    id: UUID, db: Session = Depends(get_db)
-) -> UUID:
+async def delete_permission(id: UUID, db: Session = Depends(get_db)) -> UUID:
 
     return await delete_permission_event(id, db)
 
