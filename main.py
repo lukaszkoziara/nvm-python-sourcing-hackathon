@@ -13,7 +13,7 @@ from starlette.status import (
 
 from db import Base, SessionLocal, engine
 from dbmodels import Event, EventType, EventManager
-from permission import CommandManager
+from permission import CommandManager, PermissionManager
 
 Base.metadata.create_all(bind=engine)
 
@@ -71,6 +71,17 @@ async def delete_permission_event(
     return event.aggregation_id
 
 
+async def get_permission_event(
+    aggregation_id: UUID, db: Session = Depends(get_db)
+) -> UUID:
+    permission = PermissionManager.get_permission(aggregation_id)
+    if permission:
+        return permission
+    else:
+        return HTTP_404_NOT_FOUND
+
+
+
 @app.post("/permissions", status_code=HTTP_201_CREATED)
 async def create_permission(
     permission: InPermission, db: Session = Depends(get_db)
@@ -96,11 +107,10 @@ async def delete_permission(
 
 
 @app.get("/permissions", status_code=HTTP_201_CREATED)
-async def get_permission(db: Session = Depends(get_db)) -> str:
+async def get_permissions(db: Session = Depends(get_db)) -> str:
     return db.query(Event).all()
 
 
 @app.get("/permissions/{id}", status_code=HTTP_200_OK)
 async def get_permission(id: UUID, db: Session = Depends(get_db)) -> str:
-    events = db.query(Event).filter(Event.aggregation_id == str(id)).all()
-    return events
+    return await get_permission_event(id, db)

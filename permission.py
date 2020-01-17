@@ -21,8 +21,8 @@ class Event:
             self.aggregation_id = uuid.UUID(db_event.aggregation_id)
 
     @classmethod
-    def get_from_storage(self, aggregation_id):
-        return DBEvent.filter(aggregation_id=self.aggregation_id)  # TODO: call db select
+    def get_from_storage(self, db_conn, aggregation_id):
+        return db_conn.query(DBEvent).filter(DBEvent.aggregation_id == aggregation_id).all()
 
 
 class PermissionEvent(Event):
@@ -101,19 +101,35 @@ class Permission:
     # aggregation_id
 
     def __init__(self, events):
+        self.set_empty()
+
         for event in events:
             self.apply(event)
 
+    def set_empty(self):
+        self.permission_name = ''
+        self.resource_type = ''
+        self.permission_value = ''
+        self.is_active = False
+
     def get_data(self):
-        return {}
+        return {
+            'permission_name': self.permission_name,
+            'resource_type': self.resource_type,
+            'permission_value': self.permission_value
+        }
 
     def apply(self, event):
+        # create permission event class instances
+
+
         if isinstance(event, PermissionCreated) or isinstance(event, PermissionUpdated):
             self.permission_name = event.permission_name
             self.resource_type = event.resource_type
             self.permission_value = event.permission_value
+            self.is_active = self.is_active or True
         elif isinstance(event, PermissionDeleted):
-            pass  # TODO
+            self.set_empty()
         else:
             raise ValueError('TODO')
 
@@ -121,6 +137,10 @@ class Permission:
 class PermissionManager:
 
     @classmethod
-    def get_permission(self, aggregation_id):
+    def get_permission(cls, aggregation_id):
         events = Event.get_from_storage(aggregation_id)
-        return Permission(events).get_data()
+        permission = Permission(events).get_data()
+        if permission.is_active:
+            return permission
+        else:
+            return None
