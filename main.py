@@ -80,7 +80,7 @@ async def delete_permission_event(
 async def get_permission_event(
     aggregation_id: UUID, db: Session = Depends(get_db)
 ) -> UUID:
-    permission = PermissionManager.get_permission(aggregation_id)
+    permission = PermissionManager.get_permission(db, aggregation_id)
     if permission:
         return permission
     else:

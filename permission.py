@@ -1,4 +1,5 @@
 import json
+import sys
 import uuid
 
 from dbmodels import Event as DBEvent
@@ -22,7 +23,7 @@ class Event:
 
     @classmethod
     def get_from_storage(self, db_conn, aggregation_id):
-        return db_conn.query(DBEvent).filter(DBEvent.aggregation_id == aggregation_id).all()
+        return db_conn.query(DBEvent).filter(DBEvent.aggregation_id == str(aggregation_id)).all()
 
 
 class PermissionEvent(Event):
@@ -120,15 +121,22 @@ class Permission:
         }
 
     def apply(self, event):
-        # create permission event class instances
+        event.data = json.loads(event.data)
 
-
-        if isinstance(event, PermissionCreated) or isinstance(event, PermissionUpdated):
-            self.permission_name = event.permission_name
-            self.resource_type = event.resource_type
-            self.permission_value = event.permission_value
+        if event.type == PermissionCreated.name:
+            self.permission_name = event.data['permission_name']
+            self.resource_type = event.data['resource_type']
+            self.permission_value = event.data['permission_value']
+            self.is_active = True
+        elif event.type == PermissionUpdated.name:
+            if event.data.get('permission_name', ''):
+                self.permission_name = event.data.get('permission_name')
+            if event.data.get('resource_type', ''):
+                self.resource_type = event.data.get('resource_type')
+            if event.data.get('permission_value', ''):
+                self.permission_value = event.data.get('permission_value')
             self.is_active = self.is_active or True
-        elif isinstance(event, PermissionDeleted):
+        elif event.type == PermissionDeleted.name:
             self.set_empty()
         else:
             raise ValueError('TODO')
@@ -137,10 +145,10 @@ class Permission:
 class PermissionManager:
 
     @classmethod
-    def get_permission(cls, aggregation_id):
-        events = Event.get_from_storage(aggregation_id)
-        permission = Permission(events).get_data()
+    def get_permission(cls, db_conn, aggregation_id):
+        events = Event.get_from_storage(db_conn, aggregation_id)
+        permission = Permission(events)
         if permission.is_active:
-            return permission
+            return permission.get_data()
         else:
             return None
