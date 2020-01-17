@@ -48,8 +48,22 @@ class InPermission(BaseModel):
     value: bool
 
 
-async def create_event(permission: InPermission, event_type: EventType, db: Session):
+async def create_permission(permission: InPermission, db: Session):
     event = Event.create(
+        type=EventType.UPDATED,
+        data=dumps({'name': permission.name, 'resource_type': permission.resource_type, 'value': permission.value}))
+
+    if not EventManager(db).can_insert(event):
+        return HTTP_409_CONFLICT
+
+    db.add(event)
+    db.commit()
+    return UUID(event.aggregation_id)
+
+
+async def modify_permission(aggregation_id: UUID, permission: InPermission, event_type: EventType, db: Session):
+    event = Event.create(
+        aggregation_id=aggregation_id,
         type=event_type,
         data=dumps({'name': permission.name, 'resource_type': permission.resource_type, 'value': permission.value}))
 
@@ -65,18 +79,18 @@ async def create_event(permission: InPermission, event_type: EventType, db: Sess
 async def create_permission(permission: InPermission,
                             db: Session = Depends(get_db)) -> UUID:
 
-    return await create_event(permission, EventType.CREATED, db)
+    return await create_permission(permission, db)
 
 
-@app.patch('/permissions', status_code=HTTP_200_OK)
-async def update_permission(permission: InPermission,
+@app.patch('/permissions/{id}', status_code=HTTP_200_OK)
+async def update_permission(id: UUID, permission: InPermission,
                             db: Session = Depends(get_db)) -> UUID:
 
-    return await create_event(permission, EventType.UPDATED, db)
+    return await modify_permission(id, permission, EventType.UPDATED, db)
 
 
-@app.delete('/permissions', status_code=HTTP_200_OK)
-async def delete_permission(permission: InPermission,
+@app.delete('/permissions/{id}', status_code=HTTP_200_OK)
+async def delete_permission(id: UUID, permission: InPermission,
                             db: Session = Depends(get_db)) -> UUID:
 
-    return await create_event(permission, EventType.DELETED, db)
+    return await modify_permission(id, permission, EventType.DELETED, db)
