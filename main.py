@@ -1,10 +1,9 @@
-from enum import Enum
 from json import dumps
 from uuid import UUID
 
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
-from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 from sqlalchemy.orm import Session
 
@@ -51,34 +50,33 @@ class InPermission(BaseModel):
 
 async def create_event(permission: InPermission, event_type: EventType, db: Session):
     event = Event.create(
-        aggregation_id=permission.name,
         type=event_type,
-        data=dumps({'resource_type': permission.resource_type, 'value': permission.value}))
+        data=dumps({'name': permission.name, 'resource_type': permission.resource_type, 'value': permission.value}))
 
     if not EventManager(db).can_insert(event):
         return HTTP_409_CONFLICT
 
     db.add(event)
     db.commit()
-    return event.id
+    return UUID(event.aggregation_id)
 
 
 @app.post('/permissions', status_code=HTTP_201_CREATED)
 async def create_permission(permission: InPermission,
-                            db: Session = Depends(get_db)) -> str:
+                            db: Session = Depends(get_db)) -> UUID:
 
     return await create_event(permission, EventType.CREATED, db)
 
 
-@app.patch('/permissions', status_code=HTTP_201_CREATED)
+@app.patch('/permissions', status_code=HTTP_200_OK)
 async def update_permission(permission: InPermission,
-                            db: Session = Depends(get_db)) -> str:
+                            db: Session = Depends(get_db)) -> UUID:
 
     return await create_event(permission, EventType.UPDATED, db)
 
 
-@app.delete('/permissions', status_code=HTTP_201_CREATED)
+@app.delete('/permissions', status_code=HTTP_200_OK)
 async def delete_permission(permission: InPermission,
-                            db: Session = Depends(get_db)) -> str:
+                            db: Session = Depends(get_db)) -> UUID:
 
     return await create_event(permission, EventType.DELETED, db)

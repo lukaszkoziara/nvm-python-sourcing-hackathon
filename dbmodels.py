@@ -23,9 +23,11 @@ class Event(Base):
     data = Column(String)
 
     @classmethod
-    def create(cls, aggregation_id: str, type: EventType, data: str) -> 'Event':
-        d = datetime.utcnow()
-        return cls(id=str(uuid4()), aggregation_id=aggregation_id, utctime=str(d), type=type, data=data)
+    def create(cls, type: EventType, data: str) -> 'Event':
+        utctime = str(datetime.utcnow())
+        id_ = str(uuid4())
+        aggregation_id = str(uuid4())
+        return cls(id=id_, aggregation_id=aggregation_id, utctime=utctime, type=type, data=data)
 
     @classmethod
     def exists(cls, aggregation_id, db) -> bool:
