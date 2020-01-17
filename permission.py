@@ -1,12 +1,16 @@
+from dbmodels import Event as DBEvent
+
+
 class Event:
     name = 'GeneralEvent'
 
-    def generate_uuid(self):
-        pass  # TODO: generate
-
     def move_to_storage(self):
-        self.generate_uuid()
-        # TODO: call db insert
+        return DBEvent.create(type=self.name, data=self.get_data(), aggregation_id=self.aggregation_id)
+
+    @classmethod
+    def get_from_storage(self, aggregation_id):
+        return DBEvent.filter(aggregation_id=self.aggregation_id)  # TODO: call db select
+
 
 class PermissionEvent(Event):
     name = 'PermissionEvent'
@@ -18,6 +22,14 @@ class PermissionEvent(Event):
 
     def gen_aggregation_id(self):
         self.aggregation_id = '{}_{}'.format(self.name, self.resource_type)
+
+    def get_data(self):
+        return {
+            'permission_name': self.permission_name,
+            'resource_type': self.resource_type,
+            'permission_value': self.permission_value
+        }
+
 
 class PermissionCreated(PermissionEvent):
     name = 'PermissionCreated'
@@ -36,11 +48,12 @@ class PermissionUpdated(PermissionEvent):
         self.resource_type = resource_type
         self.permission_value = permission_value
 
+
 class PermissionDeleted(PermissionEvent):
     name = 'PermissionDeleted'
 
-    def __init__(self, permission_name, resource_type):
-        self.permission_name = permission_name
+    def __init__(self, aggregation_id):
+        self.aggregation_id = aggregation_id
 
 
 class CommandManager:
@@ -49,66 +62,47 @@ class CommandManager:
     def create_permission(cls, permission_name, resource_type, permission_value):
         PermissionEvent.validate_value(permission_value)  # validate value
         permission_event = PermissionCreated(permission_name, resource_type, permission_value)  # create abstract obj
-        # TODO: validate operation - (exists & not deleted)
-        # TODO: publish event to store
+        return permission_event.move_to_storage()
     
     @classmethod
-    def update_permission(cls, permission_id, permission_value):
-        if permission_value not in (True, False):
-            raise ValueError('TODO')
-
-        # TODO: validate value
-        permission = None  # TODO: get data
-        event = PermissionUpdated(permission.name, permission.resource_type, permission_value)
-        # TODO: publish event to store
+    def update_permission(cls, permission_name, resource_type, permission_value):
+        PermissionEvent.validate_value(permission_value)
+        permission_event = PermissionUpdated(permission_name, resource_type, permission_value)
+        return permission_event.move_to_storage()
     
     @classmethod
-    def delete_permission(cls, permission_id):
-        pass
-        # TODO: publish event to store
+    def delete_permission(cls, aggregation_id):
+        permission_event = PermissionDeleted(aggregation_id)
+        return permission_event.move_to_storage()
 
 
 class Permission:
     # name
     # resource_type
     # value
-    # id
+    # aggregation_id
 
     def __init__(self, events):
         for event in events:
             self.apply(event)
 
-        self.changes = []
-
-    @classmethod
-    def create(cls, permission_name, permission_value):
-        initial_event = PermissionCreated(permission_name, permission_value)
-        instance = cls([initial_event])
-        instance.changes = [initial_event]
-        return instance
+    def get_data(self):
+        return {}
 
     def apply(self, event):
-        if isinstance(event, PermissionCreated):
+        if isinstance(event, PermissionCreated) or isinstance(event, PermissionUpdated):
             self.permission_name = event.permission_name
-            self.permission_value = event.permission_value
-        elif isinstance(event, PermissionUpdated):
-            self.permission_name = event.permission_name
+            self.resource_type = event.resource_type
             self.permission_value = event.permission_value
         elif isinstance(event, PermissionDeleted):
-
+            pass  # TODO
         else:
             raise ValueError('TODO')
 
-    def store_to_storage(self):
-        pass
 
-    # def update_permission(self, permission_name, permission_value):
-    #     if permission_name not in ('TODO: something'):
-    #         raise ValueError('TODO')
-    #
-    #     if permission_value not in (True, False):
-    #         raise ValueError('Insufficient action type')
-    #
-    #     event = PermissionUpdated(permission_name, permission_value)
-    #     self.apply(event)
-    #     self.changes.append(event)
+class PermissionManager:
+
+    @classmethod
+    def get_permission(self, aggregation_id):
+        events = Event.get_from_storage(aggregation_id)
+        return Permission(events).get_data()
