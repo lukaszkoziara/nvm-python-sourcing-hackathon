@@ -46,36 +46,52 @@ class InPermission(BaseModel):
     value: bool
 
 
-async def create_event(permission: InPermission, event_type: EventType, db: Session):
+async def create_permission(permission: InPermission, db: Session):
     event = Event.create(
-        aggregation_id=permission.name,
-        type=event_type,
-        data=dumps({'resource_type': permission.resource_type, 'value': permission.value}))
+        type=EventType.UPDATED,
+        data=dumps({'name': permission.name, 'resource_type': permission.resource_type, 'value': permission.value}))
 
     if not EventManager(db).can_insert(event):
         return HTTP_409_CONFLICT
 
     db.add(event)
     db.commit()
-    return event.id
+    return UUID(event.aggregation_id)
+
+
+async def modify_permission(aggregation_id: UUID, permission: InPermission, event_type: EventType, db: Session):
+    event = Event.create(
+        aggregation_id=aggregation_id,
+        type=event_type,
+        data=dumps({'name': permission.name, 'resource_type': permission.resource_type, 'value': permission.value}))
+
+    if not EventManager(db).can_insert(event):
+        return HTTP_409_CONFLICT
+
+    db.add(event)
+    db.commit()
+    return UUID(event.aggregation_id)
 
 
 @app.post('/permissions', status_code=HTTP_201_CREATED)
 async def create_permission(permission: InPermission,
-                            db: Session = Depends(get_db)) -> str:
-    return await create_event(permission, EventType.CREATED, db)
+                            db: Session = Depends(get_db)) -> UUID:
+
+    return await create_permission(permission, db)
 
 
-@app.patch('/permissions', status_code=HTTP_201_CREATED)
-async def update_permission(permission: InPermission,
-                            db: Session = Depends(get_db)) -> str:
-    return await create_event(permission, EventType.UPDATED, db)
+@app.patch('/permissions/{id}', status_code=HTTP_200_OK)
+async def update_permission(id: UUID, permission: InPermission,
+                            db: Session = Depends(get_db)) -> UUID:
+
+    return await modify_permission(id, permission, EventType.UPDATED, db)
 
 
-@app.delete('/permissions', status_code=HTTP_201_CREATED)
-async def delete_permission(permission: InPermission,
-                            db: Session = Depends(get_db)) -> str:
-    return await create_event(permission, EventType.DELETED, db)
+@app.delete('/permissions/{id}', status_code=HTTP_200_OK)
+async def delete_permission(id: UUID, permission: InPermission,
+                            db: Session = Depends(get_db)) -> UUID:
+
+    return await modify_permission(id, permission, EventType.DELETED, db)
 
 
 @app.get('/permissions', status_code=HTTP_201_CREATED)
