@@ -149,7 +149,7 @@ class Permission:
 class PermissionManager:
 
     @classmethod
-    def get_permission(cls, db_conn, aggregation_id):
+    def get_permission(cls, db_conn, aggregation_id, ):
         events = Event.get_from_storage(db_conn, aggregation_id)
         permission = Permission(events)
         if permission.is_active:
