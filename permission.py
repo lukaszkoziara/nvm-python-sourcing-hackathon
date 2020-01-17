@@ -24,7 +24,7 @@ class Event:
     def get_from_storage(cls, db_conn, aggregation_id, at_time=None):
         events = db_conn.query(DBEvent).filter(DBEvent.aggregation_id == str(aggregation_id))
         if at_time:
-            events.filter(DBEvent.utctime <= str(at_time))
+            events = events.filter(DBEvent.utctime <= str(at_time))
         return events.all()
 
     @classmethod
@@ -152,7 +152,7 @@ class PermissionManager:
 
     @classmethod
     def get_permission(cls, db_conn, aggregation_id, at_time):
-        events = Event.get_from_storage(db_conn, aggregation_id)
+        events = Event.get_from_storage(db_conn, aggregation_id, at_time)
         permission = Permission(events)
         if permission.is_active:
             return permission.get_data()
