@@ -1,11 +1,24 @@
+import json
+import uuid
+
 from dbmodels import Event as DBEvent
 
 
 class Event:
     name = 'GeneralEvent'
+    aggregation_id = ''
 
-    def move_to_storage(self):
-        return DBEvent.create(type=self.name, data=self.get_data(), aggregation_id=self.aggregation_id)
+    def move_to_storage(self, db_conn, with_data=True):
+        db_event = DBEvent.create(
+            type=self.name,
+            data=json.dumps(self.get_data(with_data)),
+            aggregation_id=self.aggregation_id
+        )
+        db_conn.add(db_event)
+        db_conn.commit()
+
+        if not self.aggregation_id:
+            self.aggregation_id = uuid.UUID(db_event.aggregation_id)
 
     @classmethod
     def get_from_storage(self, aggregation_id):
@@ -20,10 +33,10 @@ class PermissionEvent(Event):
         if permission_value not in (True, False):
             raise ValueError('TODO')
 
-    def gen_aggregation_id(self):
-        self.aggregation_id = '{}_{}'.format(self.name, self.resource_type)
+    def get_data(self, with_data):
+        if not with_data:
+            return {}
 
-    def get_data(self):
         return {
             'permission_name': self.permission_name,
             'resource_type': self.resource_type,
@@ -59,21 +72,26 @@ class PermissionDeleted(PermissionEvent):
 class CommandManager:
     
     @classmethod
-    def create_permission(cls, permission_name, resource_type, permission_value):
+    def create_permission(cls, db_conn, permission_name, resource_type, permission_value):
         PermissionEvent.validate_value(permission_value)  # validate value
         permission_event = PermissionCreated(permission_name, resource_type, permission_value)  # create abstract obj
-        return permission_event.move_to_storage()
+        permission_event.move_to_storage(db_conn)
+        return permission_event
     
     @classmethod
-    def update_permission(cls, permission_name, resource_type, permission_value):
+    def update_permission(cls, db_conn, aggregation_id, permission_name, resource_type, permission_value):
         PermissionEvent.validate_value(permission_value)
         permission_event = PermissionUpdated(permission_name, resource_type, permission_value)
-        return permission_event.move_to_storage()
+        permission_event.aggregation_id = aggregation_id
+        permission_event.move_to_storage(db_conn)
+        return permission_event
     
     @classmethod
-    def delete_permission(cls, aggregation_id):
+    def delete_permission(cls, db_conn, aggregation_id):
         permission_event = PermissionDeleted(aggregation_id)
-        return permission_event.move_to_storage()
+        permission_event.aggregation_id = aggregation_id
+        permission_event.move_to_storage(db_conn, with_data=False)
+        return permission_event
 
 
 class Permission:
