@@ -78,9 +78,9 @@ async def delete_permission_event(
 
 
 async def get_permission_event(
-    aggregation_id: UUID, db: Session = Depends(get_db)
+    aggregation_id: UUID, at_time, db: Session = Depends(get_db)
 ) -> UUID:
-    permission = PermissionManager.get_permission(db, aggregation_id)
+    permission = PermissionManager.get_permission(db, aggregation_id, at_time)
     if permission:
         return permission
     else:
@@ -121,5 +121,5 @@ async def get_permissions(db: Session = Depends(get_db)) -> str:
 
 
 @app.get("/permissions/{id}", status_code=HTTP_200_OK)
-async def get_permission(id: UUID, db: Session = Depends(get_db)) -> str:
-    return await get_permission_event(id, db)
+async def get_permission(id: UUID, at_time: datetime = None, db: Session = Depends(get_db)) -> str:
+    return await get_permission_event(id, at_time, db)

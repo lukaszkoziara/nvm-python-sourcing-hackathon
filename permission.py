@@ -1,5 +1,4 @@
 import json
-import sys
 import uuid
 
 from dbmodels import Event as DBEvent
@@ -22,8 +21,11 @@ class Event:
             self.aggregation_id = uuid.UUID(db_event.aggregation_id)
 
     @classmethod
-    def get_from_storage(cls, db_conn, aggregation_id):
-        return db_conn.query(DBEvent).filter(DBEvent.aggregation_id == str(aggregation_id)).all()
+    def get_from_storage(cls, db_conn, aggregation_id, at_time=None):
+        events = db_conn.query(DBEvent).filter(DBEvent.aggregation_id == str(aggregation_id))
+        if at_time:
+            events.filter(DBEvent.utctime <= str(at_time))
+        return events.all()
 
     @classmethod
     def get_aggregations(cls, db_conn):
@@ -149,7 +151,7 @@ class Permission:
 class PermissionManager:
 
     @classmethod
-    def get_permission(cls, db_conn, aggregation_id, ):
+    def get_permission(cls, db_conn, aggregation_id, at_time):
         events = Event.get_from_storage(db_conn, aggregation_id)
         permission = Permission(events)
         if permission.is_active:
