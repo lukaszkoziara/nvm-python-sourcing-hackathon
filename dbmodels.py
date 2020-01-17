@@ -1,6 +1,6 @@
+import json
 from datetime import datetime
 from enum import Enum
-from uuid import uuid4
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, String
@@ -27,7 +27,7 @@ class Event(Base):
     def create(cls, type: EventType, data: str, aggregation_id: UUID = None) -> 'Event':
         utctime = str(datetime.utcnow())
         id_ = str(uuid4())
-        aggregation_id = aggregation_id or str(uuid4())
+        aggregation_id = str(aggregation_id) or str(uuid4())
         return cls(id=id_, aggregation_id=aggregation_id, utctime=utctime, type=type, data=data)
 
     @classmethod

@@ -8,6 +8,7 @@ class Event:
         self.generate_uuid()
         # TODO: call db insert
 
+
 class PermissionEvent(Event):
     name = 'PermissionEvent'
 
@@ -18,6 +19,7 @@ class PermissionEvent(Event):
 
     def gen_aggregation_id(self):
         self.aggregation_id = '{}_{}'.format(self.name, self.resource_type)
+
 
 class PermissionCreated(PermissionEvent):
     name = 'PermissionCreated'
@@ -36,6 +38,7 @@ class PermissionUpdated(PermissionEvent):
         self.resource_type = resource_type
         self.permission_value = permission_value
 
+
 class PermissionDeleted(PermissionEvent):
     name = 'PermissionDeleted'
 
@@ -44,14 +47,14 @@ class PermissionDeleted(PermissionEvent):
 
 
 class CommandManager:
-    
+
     @classmethod
     def create_permission(cls, permission_name, resource_type, permission_value):
         PermissionEvent.validate_value(permission_value)  # validate value
         permission_event = PermissionCreated(permission_name, resource_type, permission_value)  # create abstract obj
         # TODO: validate operation - (exists & not deleted)
         # TODO: publish event to store
-    
+
     @classmethod
     def update_permission(cls, permission_id, permission_value):
         if permission_value not in (True, False):
@@ -61,7 +64,7 @@ class CommandManager:
         permission = None  # TODO: get data
         event = PermissionUpdated(permission.name, permission.resource_type, permission_value)
         # TODO: publish event to store
-    
+
     @classmethod
     def delete_permission(cls, permission_id):
         pass
